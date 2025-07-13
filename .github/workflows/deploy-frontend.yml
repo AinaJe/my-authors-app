@@ -1,4 +1,4 @@
-name: Deploy React App to SpaceShips
+name: Deploy React App to SpaceShips via FTP
 
 on:
   push:
@@ -24,22 +24,23 @@ jobs:
     - name: Build React app # Builds the React application for production
       run: npm run build
 
-    - name: Install SSH client # Installs sshpass for non-interactive SSH/rsync
-      run: sudo apt-get update && sudo apt-get install -y sshpass
-
-    - name: Deploy via rsync over SSH # Deploys the built React app to SpaceShips
-      env:
-        SSH_HOST: ${{ secrets.SPACESHIPS_HOST }} # Hostname from GitHub Secret
-        SSH_USER: ${{ secrets.SPACESHIPS_USER }} # Username from GitHub Secret
-        SSH_PASS: ${{ secrets.SPACESHIPS_PASSWORD }} # Password from GitHub Secret
-        # TARGET_DIR: /home/mhbybx___afts.lv/Aina/public_html/roboti.lat # Update this with the actual path on your SpaceShips server
-        TARGET_DIR: /home/mhbybxocvl/roboti.lat/public_html/
-      run: |
-        # It's crucial to replace TARGET_DIR with the correct path on your SpaceShips server.
-        # This path is where your website files should reside.
-        # Common paths are public_html, www, or a specific subdirectory for your domain.
-        # If your domain roboti.lat points to a specific directory, use that.
-        # For now, I've put a common example. You might need to adjust this!
-        echo "Deploying to $SSH_HOST as $SSH_USER into $TARGET_DIR"
-        sshpass -p "$SSH_PASS" rsync -avz --delete dist/ "$SSH_USER"@"$SSH_HOST":"$TARGET_DIR"
-        echo "Deployment complete!"
+    - name: Deploy to FTP # Uses a third-party action for FTP deployment
+      uses: SamKirkland/FTP-Deploy-Action@v4.3.0 # Using a popular FTP deployment action
+      with:
+        server: ${{ secrets.SPACESHIPS_HOST }} # FTP server hostname from GitHub Secret
+        username: ${{ secrets.SPACESHIPS_USER }} # FTP username from GitHub Secret
+        password: ${{ secrets.SPACESHIPS_PASSWORD }} # FTP password from GitHub Secret
+        port: ${{ secrets.SPACESHIPS_PORT }} # FTP port from GitHub Secret (should be 21)
+        local-dir: './dist/' # The local directory to deploy (your built React app)
+        remote-dir: '/home/mhbybxocvl/roboti.lat/public_html/' # The remote directory on your SpaceShips server
+        # You MUST verify this remote-dir path. It should be the root of your roboti.lat domain.
+        # Common paths are public_html/, www/, or a specific subdirectory like public_html/roboti.lat/
+        # If roboti.lat points to a subfolder, you need to specify that here.
+        # Example: remote-dir: '/home/mhbybx___afts.lv/Aina/public_html/roboti.lat/'
+        # Make sure to include the trailing slash!
+        state-name: .ftp-deploy-state.json # Stores deployment state to optimize future deployments
+        exclude: |
+          **/.git*
+          **/.git*/**
+          **/node_modules/**
+          .vscode/**
